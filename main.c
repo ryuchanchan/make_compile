@@ -1,22 +1,6 @@
 #include "compiler.h"
 
-// トークンの種類
-typedef enum {
-  TK_RESERVED, // 記号
-  TK_NUM,      // 整数トークン
-  TK_EOF,      // 入力の終わりを表すトークン
-} TokenKind;
-
-typedef struct Token Token;
-
-// トークン型
-struct Token {
-  TokenKind kind; // トークンの型
-  Token *next;    // 次の入力トークン
-  int val;        // kindがTK_NUMの場合、その数値
-  char *str;      // トークン文字列
-};
-
+Node *mul();
 // 現在着目しているトークン
 Token *token;
 
@@ -58,6 +42,70 @@ Token *new_token(TokenKind kind, Token *cur, char *str) {
   tok->str = str;
   cur->next = tok;
   return tok;
+}
+
+Node *new_node(Nodekind kind, Node *lhs, Node *rhs)
+{
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = kind;
+  node->lhs = lhs;
+  node->rhs = rhs;
+  return node;
+}
+
+Node *new_node_num(int val)
+{
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  node->val = val;
+  return node;
+}
+
+
+Node *expr()
+{
+  Node *node = mul();
+
+  for (;;)
+  {
+    if (consume('+'))
+    {
+      node = new_node(ND_ADD, node, mul());
+    }
+    else if (consume('-'))
+    {
+      node = new_node(ND_SUB, node, mul());
+    }
+    else
+      return node;
+  }
+}
+
+
+Node *primary() {
+  // 次のトークンが"("なら、"(" expr ")"のはず
+  if (consume('(')) {
+    Node *node = expr();
+    expect(')');
+    return node;
+  }
+
+  // そうでなければ数値のはず
+  return new_node_num(expect_number());
+}
+
+Node *mul()
+{
+  Node *node = primary();
+
+  for (;;) {
+    if (consume('*'))
+      node = new_node(ND_MUL, node, primary());
+    else if (consume('/'))
+      node = new_node(ND_DIV, node, primary());
+    else
+      return node;
+  }
 }
 
 // 入力文字列pをトークナイズしてそれを返す
